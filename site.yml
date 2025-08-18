@@ -1,0 +1,5 @@
+- name: Install & configure SNMPD
+  hosts: Servers
+  become: true
+  roles:
+    - snmpd

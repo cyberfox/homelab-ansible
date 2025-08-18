@@ -1,0 +1,5 @@
+---
+snmpd_pkg: "{{ 'snmpd' if ansible_os_family == 'Debian' else 'net-snmp' }}"
+snmp_agent_address: "udp:0.0.0.0:161"
+snmp_syslocation: "Homelab"
+snmp_syscontact: "ops@example.com"

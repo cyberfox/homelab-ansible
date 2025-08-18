@@ -1,0 +1,42 @@
+---
+- name: Load SNMP secrets from environment
+  no_log: true
+  set_fact:
+    snmp_user: "{{ lookup('env', 'SNMP_USER') | default(omit) }}"
+    snmp_pass: "{{ lookup('env', 'SNMP_PASS') | default(omit) }}"
+    snmp_ro_community: "{{ lookup('env', 'SNMP_COMMUNITY') | default(omit) }}"
+
+- name: Assert v3 secrets present when v3 is enabled
+  assert:
+    that:
+      - snmp_user is defined
+      - snmp_pass is defined
+    when: snmp_enable_v3 | bool
+    no_log: true
+
+- name: Assert community present when v2c is enabled
+  assert:
+    that:
+      - snmp_ro_community is defined
+    when: snmp_enable_v2c | bool
+    no_log: true
+
+- name: Ensure snmpd package present
+  package:
+    name: "{{ snmpd_pkg }}"
+    state: present
+
+- name: Deploy snmpd.conf
+  template:
+    src: snmpd.conf.j2
+    dest: /etc/snmp/snmpd.conf
+    owner: root
+    group: root
+    mode: "0640"
+  notify: Restart snmpd
+
+- name: Ensure snmpd enabled and running
+  service:
+    name: snmpd
+    state: started
+    enabled: true
