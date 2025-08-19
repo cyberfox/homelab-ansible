@@ -12,14 +12,12 @@
       - snmp_user is defined
       - snmp_pass is defined
   when: snmp_enable_v3 | bool
-  no_log: true
 
 - name: Assert community present when v2c is enabled
   assert:
     that:
       - snmp_ro_community is defined
   when: snmp_enable_v2c | bool
-  no_log: true
 
 - name: Ensure snmpd package present
   package:
