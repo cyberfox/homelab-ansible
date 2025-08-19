@@ -1,5 +1,6 @@
 - name: Install & configure SNMPD
   hosts: VMs
   become: true
+  become_user: root
   roles:
     - snmpd
