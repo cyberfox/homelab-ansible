@@ -2,6 +2,24 @@
   hosts: Hosts
   become: true
   become_user: root
+
+  pre_tasks:
+    - name: Check if Docker is installed
+      command: docker --version
+      register: docker_check
+      failed_when: false
+      changed_when: false
+
+    - name: Set Docker availability fact
+      set_fact:
+        docker_available: "{{ docker_check.rc == 0 }}"
+
+    - name: Display Docker status
+      debug:
+        msg: "{{ 'Docker is available - will deploy Portainer agent' if docker_available else 'Docker not found - skipping Portainer agent deployment' }}"
+
   roles:
-    - portainer_agent
-    - portainer_register
+    - role: portainer_agent
+      when: docker_available
+    - role: portainer_register
+      when: docker_available

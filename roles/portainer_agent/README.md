@@ -18,6 +18,8 @@ This role:
 - Ansible collection: `community.docker`
 - Root/sudo access on target hosts
 
+**Note:** When using the `portainer.yml` playbook, hosts without Docker are automatically detected and gracefully skipped. The role will only run on hosts where Docker is available.
+
 ### Installing Required Collections
 
 ```bash
