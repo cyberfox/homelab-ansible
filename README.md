@@ -10,10 +10,13 @@ This repository contains Ansible automation for configuring and maintaining home
 
 ```
 .
-├── roles/              # Ansible roles
-│   └── snmpd/         # SNMP daemon installation and configuration
-├── site.yml           # Main playbook
-└── ansible.cfg        # Ansible configuration
+├── roles/                  # Ansible roles
+│   ├── snmpd/             # SNMP daemon installation and configuration
+│   └── portainer_agent/   # Portainer agent container deployment
+├── site.yml               # SNMP deployment playbook
+├── portainer.yml          # Portainer agent deployment playbook
+├── requirements.yml       # Ansible collection dependencies
+└── ansible.cfg            # Ansible configuration
 ```
 
 ## Roles
@@ -24,9 +27,32 @@ Installs and configures the SNMP daemon for monitoring. Supports both SNMPv2c an
 
 See [roles/snmpd/README.md](roles/snmpd/README.md) for detailed documentation.
 
+### portainer_agent
+
+Deploys the Portainer agent container on Docker hosts, enabling remote management via Portainer server.
+
+See [roles/portainer_agent/README.md](roles/portainer_agent/README.md) for detailed documentation.
+
+## Playbooks
+
+- **site.yml** - Installs and configures SNMP daemon on target hosts
+- **portainer.yml** - Deploys Portainer agent container on Docker hosts
+
 ## Usage with Semaphore
 
 ### Prerequisites
+
+**Required Ansible Collections:**
+
+Install required collections before running playbooks:
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
+
+Semaphore should do this automatically if configured properly.
+
+**Environment Variables:**
 
 Semaphore must be configured with the following environment variables for secrets:
 
@@ -34,12 +60,16 @@ Semaphore must be configured with the following environment variables for secret
 - `SNMP_PASS` - SNMPv3 authentication password (required if SNMPv3 is enabled)
 - `SNMP_COMMUNITY` - SNMPv2c read-only community string (required if SNMPv2c is enabled)
 
+**For Docker Hosts:**
+
+- Docker must be pre-installed on target hosts before running the Portainer playbook
+
 ### Running Playbooks
 
 1. In Semaphore, create a new project pointing to this repository
-2. Create a task using the `site.yml` playbook
+2. Create a task using the desired playbook (`site.yml` or `portainer.yml`)
 3. Select your target inventory (host group should be named `Hosts`)
-4. Ensure environment variables are set in the Semaphore environment
+4. Ensure environment variables are set in the Semaphore environment (if required by playbook)
 5. Run the task
 
 ## Local Testing
@@ -47,12 +77,18 @@ Semaphore must be configured with the following environment variables for secret
 If you want to test locally without Semaphore:
 
 ```bash
-# Set environment variables
+# Install required collections
+ansible-galaxy collection install -r requirements.yml
+
+# For SNMP playbook - set environment variables
 export SNMP_USER="your_snmp_user"
 export SNMP_PASS="your_snmp_password"
 
-# Run the playbook
+# Run the SNMP playbook
 ansible-playbook -i your_inventory site.yml
+
+# Run the Portainer agent playbook (no environment variables needed)
+ansible-playbook -i your_inventory portainer.yml
 ```
 
 ## Adding New Playbooks
