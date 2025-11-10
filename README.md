@@ -75,6 +75,8 @@ Semaphore must be configured with the following environment variables for secret
 **For Docker Hosts:**
 
 - Docker must be pre-installed on target hosts before running the Portainer playbook
+- The `portainer.yml` playbook automatically detects Docker availability and gracefully skips hosts without Docker
+- Safe to run against mixed inventories (hosts with and without Docker)
 
 ### Running Playbooks
 

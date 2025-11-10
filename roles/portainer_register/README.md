@@ -18,6 +18,8 @@ This role:
 - The Portainer agent must be running on the target host (see `portainer_agent` role)
 - Python `requests` library (usually included with Ansible)
 
+**Note:** When using the `portainer.yml` playbook, hosts without Docker are automatically detected and gracefully skipped. This role will only run on hosts where Docker is available.
+
 ## Obtaining a Portainer API Token
 
 You need to create an API access token in Portainer:
