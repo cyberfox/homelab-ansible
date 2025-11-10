@@ -1,0 +1,25 @@
+---
+# Portainer server configuration
+portainer_url: "https://portainer.vixy.ai"
+portainer_api_version: "api"
+
+# Agent configuration
+portainer_agent_port: 9001
+portainer_agent_use_tls: false
+
+# Environment naming
+# By default, use the inventory hostname as the environment name
+portainer_environment_name: "{{ inventory_hostname }}"
+
+# Agent URL - will be constructed from inventory hostname/IP
+# You can override this if you need to use a different address
+portainer_agent_url: "{{ 'tcp://' + (ansible_default_ipv4.address | default(inventory_hostname)) + ':' + (portainer_agent_port | string) }}"
+
+# Group ID (optional) - set to assign environment to a group
+portainer_group_id: ""
+
+# Tags (optional) - list of tags to apply to the environment
+portainer_tags: []
+
+# Whether to skip registration if environment already exists
+portainer_skip_if_exists: true
