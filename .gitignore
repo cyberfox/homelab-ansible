@@ -1,1 +1,28 @@
+# Backup files
 *~
+*.bak
+*.swp
+*.swo
+
+# Ansible retry files
+*.retry
+
+# Vault password files
+.vault_password
+.vault_pass
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python bytecode
+*.pyc
+__pycache__/
+
+# Editor directories
+.vscode/
+.idea/
+
+# Local testing
+.molecule/
+.cache/
