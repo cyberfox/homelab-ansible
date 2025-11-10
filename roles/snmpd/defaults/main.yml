@@ -1,5 +1,14 @@
 ---
+# Package name varies by OS family
 snmpd_pkg: "{{ 'snmpd' if ansible_os_family == 'Debian' else 'net-snmp' }}"
+
+# SNMP agent listening address
 snmp_agent_address: "udp:0.0.0.0:161"
+
+# System information
 snmp_syslocation: "Homelab"
 snmp_syscontact: "ops@example.com"
+
+# Protocol version enablement
+snmp_enable_v2c: false
+snmp_enable_v3: true
