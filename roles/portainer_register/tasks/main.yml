@@ -1,0 +1,63 @@
+---
+- name: Load Portainer API token from environment
+  no_log: true
+  set_fact:
+    portainer_api_token: "{{ lookup('env', 'PORTAINER_API_TOKEN') | default(omit) }}"
+
+- name: Assert API token is present
+  assert:
+    that:
+      - portainer_api_token is defined
+      - portainer_api_token | length > 0
+    fail_msg: "PORTAINER_API_TOKEN environment variable must be set"
+
+- name: Check existing Portainer environments
+  uri:
+    url: "{{ portainer_url }}/{{ portainer_api_version }}/endpoints"
+    method: GET
+    headers:
+      X-API-Key: "{{ portainer_api_token }}"
+    validate_certs: true
+    status_code: 200
+  register: portainer_endpoints
+  no_log: true
+
+- name: Check if environment already exists
+  set_fact:
+    environment_exists: "{{ portainer_endpoints.json | selectattr('Name', 'equalto', portainer_environment_name) | list | length > 0 }}"
+
+- name: Display environment status
+  debug:
+    msg: "Environment '{{ portainer_environment_name }}' already exists in Portainer"
+  when: environment_exists
+
+- name: Register agent with Portainer
+  uri:
+    url: "{{ portainer_url }}/{{ portainer_api_version }}/endpoints"
+    method: POST
+    headers:
+      X-API-Key: "{{ portainer_api_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      Name: "{{ portainer_environment_name }}"
+      EndpointCreationType: 1
+      URL: "{{ portainer_agent_url }}"
+      TLS: "{{ portainer_agent_use_tls }}"
+      GroupID: "{{ portainer_group_id | default(omit) }}"
+      TagIDs: "{{ portainer_tags | default(omit) }}"
+    validate_certs: true
+    status_code: [200, 201]
+  register: portainer_register_result
+  when: not environment_exists or not portainer_skip_if_exists
+  no_log: true
+
+- name: Display registration result
+  debug:
+    msg: "Successfully registered '{{ portainer_environment_name }}' at {{ portainer_agent_url }}"
+  when: portainer_register_result is changed
+
+- name: Skipped registration message
+  debug:
+    msg: "Skipped registration - environment already exists"
+  when: environment_exists and portainer_skip_if_exists

@@ -10,13 +10,14 @@ This repository contains Ansible automation for configuring and maintaining home
 
 ```
 .
-├── roles/                  # Ansible roles
-│   ├── snmpd/             # SNMP daemon installation and configuration
-│   └── portainer_agent/   # Portainer agent container deployment
-├── site.yml               # SNMP deployment playbook
-├── portainer.yml          # Portainer agent deployment playbook
-├── requirements.yml       # Ansible collection dependencies
-└── ansible.cfg            # Ansible configuration
+├── roles/                    # Ansible roles
+│   ├── snmpd/               # SNMP daemon installation and configuration
+│   ├── portainer_agent/     # Portainer agent container deployment
+│   └── portainer_register/  # Automatic Portainer environment registration
+├── site.yml                 # SNMP deployment playbook
+├── portainer.yml            # Portainer agent deployment and registration playbook
+├── requirements.yml         # Ansible collection dependencies
+└── ansible.cfg              # Ansible configuration
 ```
 
 ## Roles
@@ -33,10 +34,16 @@ Deploys the Portainer agent container on Docker hosts, enabling remote managemen
 
 See [roles/portainer_agent/README.md](roles/portainer_agent/README.md) for detailed documentation.
 
+### portainer_register
+
+Automatically registers Docker hosts with Portainer server using the Portainer REST API. Eliminates the need to manually add environments through the Portainer web UI.
+
+See [roles/portainer_register/README.md](roles/portainer_register/README.md) for detailed documentation.
+
 ## Playbooks
 
 - **site.yml** - Installs and configures SNMP daemon on target hosts
-- **portainer.yml** - Deploys Portainer agent container on Docker hosts
+- **portainer.yml** - Deploys Portainer agent container and automatically registers it with Portainer server
 
 ## Usage with Semaphore
 
@@ -56,9 +63,14 @@ Semaphore should do this automatically if configured properly.
 
 Semaphore must be configured with the following environment variables for secrets:
 
+**For SNMP (site.yml):**
 - `SNMP_USER` - SNMPv3 username (required if SNMPv3 is enabled)
 - `SNMP_PASS` - SNMPv3 authentication password (required if SNMPv3 is enabled)
 - `SNMP_COMMUNITY` - SNMPv2c read-only community string (required if SNMPv2c is enabled)
+
+**For Portainer (portainer.yml):**
+- `PORTAINER_API_TOKEN` - Portainer API access token (required for automatic registration)
+  - Generate in Portainer: User menu → My account → Access tokens → Add access token
 
 **For Docker Hosts:**
 
@@ -87,7 +99,10 @@ export SNMP_PASS="your_snmp_password"
 # Run the SNMP playbook
 ansible-playbook -i your_inventory site.yml
 
-# Run the Portainer agent playbook (no environment variables needed)
+# For Portainer playbook - set API token
+export PORTAINER_API_TOKEN="your_portainer_api_token"
+
+# Run the Portainer agent playbook (deploys agent and registers with Portainer)
 ansible-playbook -i your_inventory portainer.yml
 ```
 
