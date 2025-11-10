@@ -1,0 +1,16 @@
+---
+# Portainer agent container configuration
+portainer_agent_image: "portainer/agent:latest"
+portainer_agent_container_name: "portainer_agent"
+portainer_agent_port: 9001
+
+# Restart policy
+portainer_agent_restart_policy: "always"
+
+# Volume mounts
+portainer_agent_volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+  - /var/lib/docker/volumes:/var/lib/docker/volumes
+
+# Container state
+portainer_agent_state: "started"

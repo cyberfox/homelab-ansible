@@ -1,0 +1,6 @@
+- name: Deploy Portainer agent on Docker hosts
+  hosts: Hosts
+  become: true
+  become_user: root
+  roles:
+    - portainer_agent

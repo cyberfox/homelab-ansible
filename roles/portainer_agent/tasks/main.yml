@@ -1,0 +1,47 @@
+---
+- name: Check if Docker is installed
+  command: docker --version
+  register: docker_check
+  failed_when: false
+  changed_when: false
+
+- name: Fail if Docker is not installed
+  fail:
+    msg: "Docker is not installed on this host. Please install Docker before running this role."
+  when: docker_check.rc != 0
+
+- name: Ensure Docker service is running
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Install Python Docker library (Debian/Ubuntu)
+  apt:
+    name: python3-docker
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+
+- name: Install Python Docker library (RHEL/CentOS)
+  package:
+    name: python3-docker
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: Deploy Portainer agent container
+  community.docker.docker_container:
+    name: "{{ portainer_agent_container_name }}"
+    image: "{{ portainer_agent_image }}"
+    state: "{{ portainer_agent_state }}"
+    restart_policy: "{{ portainer_agent_restart_policy }}"
+    ports:
+      - "{{ portainer_agent_port }}:9001"
+    volumes: "{{ portainer_agent_volumes }}"
+    pull: true
+  register: portainer_agent_container
+
+- name: Display Portainer agent status
+  debug:
+    msg: "Portainer agent is {{ portainer_agent_container.container.State.Status }} on port {{ portainer_agent_port }}"
+  when: portainer_agent_container.container is defined
