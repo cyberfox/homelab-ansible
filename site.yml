@@ -6,9 +6,20 @@
   roles:
     - snmpd
 
-- name: Install & configure NetData monitoring
-  hosts: all
+- name: Install & configure NetData (parent)
+  hosts: netdata_parent
   become: true
   become_user: root
   roles:
     - netdata
+  vars:
+    netdata_mode: parent
+
+- name: Install & configure NetData (children)
+  hosts: netdata_children
+  become: true
+  become_user: root
+  roles:
+    - netdata
+  vars:
+    netdata_mode: child

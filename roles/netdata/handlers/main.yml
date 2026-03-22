@@ -3,3 +3,7 @@
   service:
     name: netdata
     state: restarted
+
+- name: Reload claiming state
+  command: /usr/sbin/netdatacli reload-claiming-state
+  changed_when: false

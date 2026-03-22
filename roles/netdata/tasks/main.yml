@@ -13,7 +13,7 @@
         sh /tmp/netdata-kickstart.sh
         --non-interactive
         --stable-channel
-        {% if not netdata_disable_cloud %}--cloud{% else %}--no-cloud{% endif %}
+        --disable-cloud
         {% if netdata_auto_updates %}--auto-update{% else %}--disable-auto-updates{% endif %}
       args:
         creates: /usr/sbin/netdata
@@ -25,60 +25,95 @@
         path: /tmp/netdata-kickstart.sh
         state: absent
 
-- name: Configure NetData
+- name: Configure NetData base settings
+  copy:
+    content: |
+      [web]
+        bind to = {{ netdata_bind_to }}
+      [global]
+        memory mode = {{ netdata_memory_mode }}
+      {% if netdata_disable_cloud %}
+      [cloud]
+        enabled = no
+      {% endif %}
+    dest: /etc/netdata/netdata.conf.d/homelab.conf
+    owner: root
+    group: netdata
+    mode: "0640"
+  notify: Restart netdata
+
+- name: Configure as parent node (accepts streams, claims to cloud)
+  when: netdata_mode == "parent"
   block:
-    - name: Ensure netdata config directory exists
-      file:
-        path: /etc/netdata
-        state: directory
-        owner: root
-        group: netdata
-        mode: "0750"
+    - name: Assert claim token is set for parent mode
+      assert:
+        that:
+          - netdata_claim_token | length > 0
+        fail_msg: "NETDATA_CLAIM_TOKEN env var must be set for parent mode"
 
-    - name: Set NetData bind address
-      lineinfile:
-        path: /etc/netdata/netdata.conf
-        regexp: '^\s*#?\s*bind to ='
-        line: "  bind to = {{ netdata_bind_to | regex_replace('^.*=', '') | default('=' + netdata_bind_to) }}"
-        state: present
-      notify: Restart netdata
-      # The regex approach is fragile — use netdata.conf.d for cleaner overrides
+    - name: Assert stream API key is set for parent mode
+      assert:
+        that:
+          - netdata_stream_api_key | length > 0
+        fail_msg: "NETDATA_STREAM_API_KEY env var must be set for parent mode"
 
-    - name: Deploy custom config via netdata.conf.d
+    - name: Configure streaming (accept connections from children)
       copy:
         content: |
-          [web]
-            bind to = {{ netdata_bind_to }}
-          {% if netdata_memory_mode != 'none' %}
-          [global]
-            memory mode = {{ netdata_memory_mode }}
-          {% endif %}
-          {% if netdata_disable_cloud %}
-          [cloud]
-            enabled = no
-          {% endif %}
-        dest: /etc/netdata/netdata.conf.d/homelab.conf
+          [API_KEY]
+              {{ netdata_stream_api_key }} = child nodes
+
+          [stream]
+              enabled = yes
+              accept a streaming connection from = *
+              default history = 3600
+              health enabled by default = yes
+        dest: /etc/netdata/netdata.conf.d/stream.conf
         owner: root
         group: netdata
         mode: "0640"
       notify: Restart netdata
 
-    {% if netdata_enable_streaming and netdata_parent_host %}
-    - name: Configure NetData streaming to parent
+    - name: Write cloud claim configuration
+      copy:
+        content: |
+          [global]
+              url = {{ netdata_claim_url }}
+              token = {{ netdata_claim_token }}
+              {% if netdata_claim_rooms %}rooms = {{ netdata_claim_rooms }}{% endif %}
+        dest: /etc/netdata/claim.conf
+        owner: root
+        group: netdata
+        mode: "0640"
+      notify: Reload claiming state
+
+    - name: Reload cloud claiming state
+      command: /usr/sbin/netdatacli reload-claiming-state
+      changed_when: false
+
+- name: Configure as child node (streams to parent)
+  when: netdata_mode == "child"
+  block:
+    - name: Assert stream API key is set for child mode
+      assert:
+        that:
+          - netdata_stream_api_key | length > 0
+        fail_msg: "NETDATA_STREAM_API_KEY env var must be set for child mode"
+
+    - name: Configure streaming to parent
       copy:
         content: |
           [stream]
-            enabled = yes
-            destination = {{ netdata_parent_host }}:{{ netdata_parent_port }}
-            api key = {{ netdata_parent_api_key }}
+              enabled = yes
+              destination = {{ netdata_parent_host }}:{{ netdata_parent_port }}
+              api key = {{ netdata_stream_api_key }}
           [plugins]
-            enable looking glass = no
-        dest: /etc/netdata/stream.conf
+              enable looking glass = no
+        dest: /etc/netdata/netdata.conf.d/stream.conf
         owner: root
         group: netdata
         mode: "0640"
       notify: Restart netdata
-    {% endif %}
 
 - name: Ensure NetData service is running
   service:
@@ -93,4 +128,4 @@
     proto: tcp
     comment: "NetData monitoring"
   when: ansible_os_family == "Debian"
-  ignore_errors: true  # Don't fail if ufw not installed
+  ignore_errors: true

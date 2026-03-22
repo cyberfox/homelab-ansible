@@ -2,52 +2,77 @@
 
 Installs [NetData](https://www.netdata.cloud/) for real-time infrastructure monitoring.
 
-## What it does
+## Architecture
 
-- Installs NetData via the official kickstart script (stable channel)
-- Configures bind address, memory mode, and cloud settings
-- Optionally configures streaming to a parent/central node
-- Opens firewall port 19999 (if ufw is present)
+```
+All child hosts ──stream──> monitoring.yiff.org (parent) ──> NetData Cloud
+```
+
+- **Parent node** accepts metric streams from all children and syncs to NetData Cloud
+- **Child nodes** install NetData locally and stream metrics to the parent (no cloud connection)
 
 ## Configuration
 
-Override defaults in `host_vars` or `group_vars`:
+All secrets are passed via environment variables (following repo conventions).
+
+### Required environment variables
+
+| Variable | Description |
+|---|---|
+| `NETDATA_CLAIM_TOKEN` | Cloud claim token (parent only) |
+| `NETDATA_CLAIM_ROOMS` | Cloud room IDs (parent only) |
+| `NETDATA_STREAM_API_KEY` | Shared API key for parent-child streaming |
+
+### Optional overrides
 
 ```yaml
-# NetData listening address
-netdata_bind_to: "0.0.0.0:19999"
-
-# Memory mode for smaller hosts
-netdata_memory_mode: "ram"  # none, ram, save, max
-
-# Disable NetData cloud (default: true for self-hosted)
-netdata_disable_cloud: true
-
-# Stream metrics to a central node (optional)
-netdata_enable_streaming: true
-netdata_parent_host: "monitoring.yiff.org"
-netdata_parent_port: 19999
-netdata_parent_api_key: "your-api-key-here"
+netdata_bind_to: "0.0.0.0:19999"       # Listening address
+netdata_memory_mode: "ram"              # none, ram, save, max
+netdata_parent_host: "monitoring.yiff.org"  # Parent address (children)
+netdata_parent_port: 19999              # Parent port (children)
+netdata_auto_updates: true              # Enable daily auto-updates
 ```
 
 ## Usage
 
-Add to `site.yml`:
+### 1. Set environment variables
 
-```yaml
-- name: Install NetData monitoring
-  hosts: all
-  become: true
-  roles:
-    - netdata
+```bash
+export NETDATA_CLAIM_TOKEN="your-claim-token"
+export NETDATA_CLAIM_ROOMS="room-id-1,room-id-2"
+export NETDATA_STREAM_API_KEY="your-streaming-api-key"
 ```
 
-Or target specific groups:
+### 2. Run the playbook
+
+```bash
+ansible-playbook site.yml -i inventory.yml --private-key ~/.ssh/ansible_ed25519
+```
+
+### 3. Verify
+
+```bash
+# Check parent is accepting streams
+ansible netdata_parent -i inventory.yml --private-key ~/.ssh/ansible_ed25519 \
+  -m shell -a "netdatacli stream-status"
+
+# Check child is connected
+ansible netdata_children -i inventory.yml --private-key ~/.ssh/ansible_ed25519 \
+  -m shell -a "netdatacli stream-status"
+```
+
+## Inventory groups
+
+Your inventory should define these groups:
 
 ```yaml
-- name: Install NetData on ProxMox hosts
-  hosts: proxmox
-  become: true
-  roles:
-    - netdata
+all:
+  children:
+    netdata_parent:
+      hosts:
+        monitoring.yiff.org:
+    netdata_children:
+      hosts:
+        proxmox-1.yiff.org:
+        # ... all other hosts
 ```
