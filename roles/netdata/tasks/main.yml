@@ -1,0 +1,96 @@
+---
+- name: Install NetData via official kickstart script
+  when: netdata_install_method == "native-kickstart"
+  block:
+    - name: Check if NetData is already installed
+      stat:
+        path: /usr/sbin/netdata
+      register: netdata_binary
+
+    - name: Download and run NetData kickstart script
+      shell: >
+        curl -Ss https://get.netdata.cloud/kickstart.sh > /tmp/netdata-kickstart.sh &&
+        sh /tmp/netdata-kickstart.sh
+        --non-interactive
+        --stable-channel
+        {% if not netdata_disable_cloud %}--cloud{% else %}--no-cloud{% endif %}
+        {% if netdata_auto_updates %}--auto-update{% else %}--disable-auto-updates{% endif %}
+      args:
+        creates: /usr/sbin/netdata
+      when: not netdata_binary.stat.exists
+      changed_when: false
+
+    - name: Clean up kickstart script
+      file:
+        path: /tmp/netdata-kickstart.sh
+        state: absent
+
+- name: Configure NetData
+  block:
+    - name: Ensure netdata config directory exists
+      file:
+        path: /etc/netdata
+        state: directory
+        owner: root
+        group: netdata
+        mode: "0750"
+
+    - name: Set NetData bind address
+      lineinfile:
+        path: /etc/netdata/netdata.conf
+        regexp: '^\s*#?\s*bind to ='
+        line: "  bind to = {{ netdata_bind_to | regex_replace('^.*=', '') | default('=' + netdata_bind_to) }}"
+        state: present
+      notify: Restart netdata
+      # The regex approach is fragile — use netdata.conf.d for cleaner overrides
+
+    - name: Deploy custom config via netdata.conf.d
+      copy:
+        content: |
+          [web]
+            bind to = {{ netdata_bind_to }}
+          {% if netdata_memory_mode != 'none' %}
+          [global]
+            memory mode = {{ netdata_memory_mode }}
+          {% endif %}
+          {% if netdata_disable_cloud %}
+          [cloud]
+            enabled = no
+          {% endif %}
+        dest: /etc/netdata/netdata.conf.d/homelab.conf
+        owner: root
+        group: netdata
+        mode: "0640"
+      notify: Restart netdata
+
+    {% if netdata_enable_streaming and netdata_parent_host %}
+    - name: Configure NetData streaming to parent
+      copy:
+        content: |
+          [stream]
+            enabled = yes
+            destination = {{ netdata_parent_host }}:{{ netdata_parent_port }}
+            api key = {{ netdata_parent_api_key }}
+          [plugins]
+            enable looking glass = no
+        dest: /etc/netdata/stream.conf
+        owner: root
+        group: netdata
+        mode: "0640"
+      notify: Restart netdata
+    {% endif %}
+
+- name: Ensure NetData service is running
+  service:
+    name: netdata
+    state: started
+    enabled: true
+
+- name: Configure firewall for NetData (ufw)
+  community.general.ufw:
+    rule: allow
+    port: "19999"
+    proto: tcp
+    comment: "NetData monitoring"
+  when: ansible_os_family == "Debian"
+  ignore_errors: true  # Don't fail if ufw not installed

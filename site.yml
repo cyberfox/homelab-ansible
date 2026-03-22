@@ -1,6 +1,14 @@
+---
 - name: Install & configure SNMPD
   hosts: Hosts
   become: true
   become_user: root
   roles:
     - snmpd
+
+- name: Install & configure NetData monitoring
+  hosts: all
+  become: true
+  become_user: root
+  roles:
+    - netdata

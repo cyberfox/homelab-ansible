@@ -1,0 +1,30 @@
+---
+galaxy_info:
+  author: Homelab Admin
+  description: Install and configure NetData for real-time infrastructure monitoring
+  license: MIT
+  min_ansible_version: "2.9"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+
+  galaxy_tags:
+    - monitoring
+    - netdata
+    - metrics
+    - observability
+    - dashboard
+
+dependencies: []

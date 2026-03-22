@@ -1,0 +1,30 @@
+---
+# NetData package manager
+# Options: native-kickstart (official install script), docker
+netdata_install_method: "native-kickstart"
+
+# Native install options
+# When true, runs the official kickstart script (recommended by NetData)
+# When false, installs from OS package repos (may be older)
+netdata_use_official_repo: true
+
+# NetData configuration
+netdata_bind_to: "0.0.0.0:19999"
+
+# NetData stream/parent configuration (optional — for centralizing metrics)
+# Set netdata_parent_host to enable streaming to a parent node
+netdata_enable_streaming: false
+netdata_parent_host: ""
+netdata_parent_port: 19999
+netdata_parent_api_key: ""
+
+# NetData cloud (optional)
+netdata_disable_cloud: true
+
+# Auto-updates
+netdata_auto_updates: true
+netdata_auto_update_schedule: "daily"
+
+# Memory optimization (for smaller VMs)
+# Options: none, ram, save, max
+netdata_memory_mode: "ram"
